@@ -65,6 +65,7 @@ print(f"\nSuccessfully mapped {len(controllable_joint)} joints.")
 print("Controls: \n U/I:Rotating \n H/J:Shoulder \n K/L: Arm")
 
 while True:
+    
     keys=p.getKeyboardEvents()
     if 27 in keys: break # ESC key
     
