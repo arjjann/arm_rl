@@ -1,3 +1,23 @@
+# virtual environment
 proj_env/
-envs/turtlebot_Env.py
-envs/robotic_arm_env.py 
+venv/
+env/
+.env/
+
+# logs
+logs/
+runs/
+tensorboard/
+
+# models / checkpoints
+models/
+*.zip
+*.pth
+*.pt
+
+# python cache
+__pycache__/
+*.pyc
+
+# OS files
+.DS_Store

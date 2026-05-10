@@ -22,45 +22,45 @@ p.resetDebugVisualizerCamera(
 )
 
 # Define Joints
-# joints=[0,1,2]
+joints=[1,2,3]
 
 #Automatic joint detection
-controllable_joint=[]
+# controllable_joint=[]
 
-for i in range(p.getNumJoints(robot_id)):
-    info=p.getJointInfo(robot_id,i)
-    joint_name=info[1].decode("utf-8")
-    joint_type=info[2]
+# for i in range(p.getNumJoints(robot_id)):
+#     info=p.getJointInfo(robot_id,i)
+#     joint_name=info[1].decode("utf-8")
+#     joint_type=info[2]
 
-    if joint_type==p.JOINT_REVOLUTE:
-        controllable_joint.append(i)
-        print(f"Found Controllable joint:{joint_name} at index {i}")
+#     if joint_type==p.JOINT_REVOLUTE:
+#         controllable_joint.append(i)
+#         print(f"Found Controllable joint:{joint_name} at index {i}")
 
-if len(controllable_joint)<3:
-    print("ERROR:Robot must have at least 3 joints.")
-    exit()
+# if len(controllable_joint)<3:
+#     print("ERROR:Robot must have at least 3 joints.")
+#     exit()
 
 
-# limits=[(-3.14,3.14),(-1.57,0.0),(-1.57,0.35)]
+limits=[(-3.14,3.14),(-1.57,0.0),(-1.57,0.35)]
 #Read limits from urdf
-limits=[]
-for joint in controllable_joint:
-    info=p.getJointInfo(robot_id,joint)
-    lower_limit=info[8]
-    upper_limit=info[9]
+# limits=[]
+# for j in joints:
+#     info=p.getJointInfo(robot_id,j)
+#     lower_limit=info[8]
+#     upper_limit=info[9]
 
-    if lower_limit > upper_limit:
-        lower_limit=-3.14
-        upper_limit=3.14
+#     if lower_limit > upper_limit:
+#         lower_limit=-3.14
+#         upper_limit=3.14
     
-    limits.append((lower_limit,upper_limit))
-    print(f"joint {info[1].decode('utf-8')} limits: {lower_limit:.2f}.{upper_limit:.2f}")
+#     limits.append((lower_limit,upper_limit))
+#     print(f"joint {info[1].decode('utf-8')} limits: {lower_limit:.2f}.{upper_limit:.2f}")
 
 
-targets=[0.0]*len(controllable_joint)#initial position
+targets=[0.0]*len(joints)#initial position
 step_size=0.005 #How much the joint moves with keyboard press
 
-print(f"\nSuccessfully mapped {len(controllable_joint)} joints.")
+# print(f"\nSuccessfully mapped {len(joints)} joints.")
 
 print("Controls: \n U/I:Rotating \n H/J:Shoulder \n K/L: Arm")
 
@@ -88,10 +88,10 @@ while True:
     
     p.setJointMotorControlArray(
         robot_id,
-        controllable_joint,
+        joints,
         p.POSITION_CONTROL,
         targetPositions=targets,
-        forces=[500.0]*len(controllable_joint)
+        forces=[500.0]*len(joints)
     )
 
     p.stepSimulation()
