@@ -84,9 +84,9 @@ class CustomEnv(gym.Env):
             p.resetJointState(self.robot_id,i,0.0)
 
         #Randomize goal position for training
-        min_radius=0.12
-        max_radius=0.35
-        goal_height=0.01
+        min_radius=0.15
+        max_radius=0.25
+        goal_height=0.03
 
         #random point in space
         angle=np.random.uniform(0,2*np.pi)
@@ -127,7 +127,6 @@ class CustomEnv(gym.Env):
 
         progress=self.prev_distance-distance
         reward=progress*10.0 #reward for each progress
-        reward-=distance*0.1 #penalty distance
         reward-=0.01 #step penalty
         #Termination condition
         terminated=bool(distance<0.05) #success within 5cm
@@ -137,8 +136,8 @@ class CustomEnv(gym.Env):
         #time limit
         self.current_step+=1
         truncated=bool(self.current_step>=self.max_steps) # time limit defined
-        if truncated and not terminated:
-            reward-=5.0 #time penalty
+        # if truncated and not terminated:
+        #     reward-=5.0 #time penalty
 
         self.prev_distance=distance
 

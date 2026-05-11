@@ -1,6 +1,5 @@
 # virtual environment
 proj_env/
-venv/
 env/
 .env/
 
@@ -21,3 +20,9 @@ __pycache__/
 
 # OS files
 .DS_Store
+
+#others
+envs/turtlebot_Env.py
+envs/robot_launch2.py
+envs/arm_control2.py
+train_opt.py
