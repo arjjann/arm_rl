@@ -25,4 +25,3 @@ __pycache__/
 envs/turtlebot_Env.py
 envs/robot_launch2.py
 envs/arm_control2.py
-train_opt.py
