@@ -16,13 +16,11 @@ os.makedirs("logs", exist_ok=True)
 path = "models/ppo_robotic_arm"
 opt_path="models/ppo_robotic_arm_opt"
 urdf = "/home/arjan/arm_rl/urdf/robotic_arm/urdf/robotic_arm.urdf"
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-log_path = f"./logs/optuna_{timestamp}/"
 n_envs=4
 
 def make_env():
     def _init():
-        return Monitor(CustomEnv(urdf))
+        return Monitor(CustomEnv(urdf,render=False))
     return _init
 
 # Optuna Tuning 
@@ -37,8 +35,8 @@ def objective(trial):
     n_steps       = trial.suggest_categorical("n_steps", [512, 1024, 2048, 4096])
     max_grad_norm = trial.suggest_float("max_grad_norm", 0.3, 1.0)
 
-    env = DummyVecEnv([lambda: Monitor(CustomEnv(urdf))])
-    # env=SubprocVecEnv([make_env() for _ in range(n_envs)])
+    # env = DummyVecEnv([lambda: Monitor(CustomEnv(urdf))])
+    env=SubprocVecEnv([make_env() for _ in range(n_envs)])
     model = PPO("MlpPolicy", 
                 env, 
                 verbose=0,
@@ -51,7 +49,7 @@ def objective(trial):
                 batch_size=batch_size, 
                 n_steps=n_steps, 
                 max_grad_norm=max_grad_norm,
-                device="cpu")
+                device="cuda")
 
     model.learn(total_timesteps=50000,reset_num_timesteps=False)    
     mean_reward, _ =evaluate_policy(model, env, n_eval_episodes=5, deterministic=True) #:use evaluate_policy libarary by importing it
@@ -66,67 +64,71 @@ def objective(trial):
     env.close()
     return mean_reward
 
-study = optuna.create_study(direction="maximize")
-study.optimize(objective, n_trials=20, show_progress_bar=True)
+if __name__=="__main__":
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_path = f"./logs/optuna_{timestamp}/"
 
-#Final Trainining 
-best = study.best_trial.params
-print(f"  Best Reward : {study.best_trial.value:.2f}")
-print(f" Best Params : {study.best_trial.params}")
+    study = optuna.create_study(direction="maximize")
+    study.optimize(objective, n_trials=20, show_progress_bar=True)
 
-env = DummyVecEnv([lambda: Monitor(CustomEnv(urdf))])
-# env=SubprocVecEnv([make_env() for _ in range(n_envs)])
+    #Final Trainining 
+    best = study.best_trial.params
+    print(f"  Best Reward : {study.best_trial.value:.2f}")
+    print(f" Best Params : {study.best_trial.params}")
 
-
-if os.path.exists(path +".zip"):
-    model=PPO.load(path,env=env,tensorboard_log=log_path) #continue training from previous one
-    model.learning_rate  = best["learning_rate"]
-    model.gamma          = best["gamma"]
-    model.gae_lambda     = best["gae_lambda"]
-    model.clip_range     = best["clip_range"]
-    model.ent_coef       = best["ent_coef"]
-    model.vf_coef        = best["vf_coef"]
-    model.max_grad_norm  = best["max_grad_norm"]
-
-else:
-    model = PPO("MlpPolicy",
-                env,
-                verbose=1,
-                learning_rate=best["learning_rate"],
-                gamma=best["gamma"],
-                gae_lambda=best["gae_lambda"],
-                clip_range=best["clip_range"],
-                ent_coef=best["ent_coef"],
-                vf_coef=best["vf_coef"],
-                batch_size=best["batch_size"],
-                n_steps=best["n_steps"],
-                max_grad_norm=best["max_grad_norm"],
-                device="cpu",
-                tensorboard_log=log_path)
+    # env = DummyVecEnv([lambda: Monitor(CustomEnv(urdf))])
+    env=SubprocVecEnv([make_env() for _ in range(n_envs)])
 
 
-checkpoint_callback = CheckpointCallback(save_freq=5000, save_path="models/", name_prefix="ppo_robotic_arm_x")
+    if os.path.exists(path +".zip"):
+        model=PPO.load(path,env=env,tensorboard_log=log_path) #continue training from previous one
+        model.learning_rate  = best["learning_rate"]
+        model.gamma          = best["gamma"]
+        model.gae_lambda     = best["gae_lambda"]
+        model.clip_range     = best["clip_range"]
+        model.ent_coef       = best["ent_coef"]
+        model.vf_coef        = best["vf_coef"]
+        model.max_grad_norm  = best["max_grad_norm"]
 
-print("Starting final training...")
-model.learn(total_timesteps=200000, reset_num_timesteps=False, callback=checkpoint_callback)
-model.save(opt_path)
-print(f"Model saved to {opt_path}.zip")
-# env.close()
-# eval_env=SubprocVecEnv([make_env()])  #single env for eval
-#Evaluation
-print("Starting evaluation...")
-obs = env.reset()
-try:
-    while True:
-        action, _states = model.predict(obs, deterministic=True)
-        obs, rewards, dones, info = env.step(action)
-        if dones[0]:
-            obs = env.reset()
+    else:
+        model = PPO("MlpPolicy",
+                    env,
+                    verbose=1,
+                    learning_rate=best["learning_rate"],
+                    gamma=best["gamma"],
+                    gae_lambda=best["gae_lambda"],
+                    clip_range=best["clip_range"],
+                    ent_coef=best["ent_coef"],
+                    vf_coef=best["vf_coef"],
+                    batch_size=best["batch_size"],
+                    n_steps=best["n_steps"],
+                    max_grad_norm=best["max_grad_norm"],
+                    device="cuda",
+                    tensorboard_log=log_path)
 
-except KeyboardInterrupt:
-    print("\nInterrupted during evaluation.")
 
-finally:
+    checkpoint_callback = CheckpointCallback(save_freq=5000, save_path="models/", name_prefix="ppo_robotic_arm_x")
+
+    print("Starting final training...")
+    model.learn(total_timesteps=200000, reset_num_timesteps=False, callback=checkpoint_callback)
     model.save(opt_path)
     print(f"Model saved to {opt_path}.zip")
     env.close()
+    eval_env = DummyVecEnv([lambda: Monitor(CustomEnv(urdf, render=False))])  #single env for eval
+    #Evaluation
+    print("Starting evaluation...")
+    obs = eval_env.reset()
+    try:
+        while True:
+            action, _states = model.predict(obs, deterministic=True)
+            obs, rewards, dones, info = eval_env.step(action)
+            if dones[0]:
+                obs = eval_env.reset()
+
+    except KeyboardInterrupt:
+        print("\nInterrupted during evaluation.")
+
+    finally:
+        model.save(opt_path)
+        print(f"Model saved to {opt_path}.zip")
+        eval_env.close()

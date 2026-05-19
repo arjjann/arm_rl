@@ -10,13 +10,16 @@ class CustomEnv(gym.Env):
 
     metadata = {"render_modes": ["human"], "render_fps": 30}
 
-    def __init__(self,arm_urdf):
+    def __init__(self,arm_urdf, render=False):
         super().__init__()
+        if render:
+            self.client=p.connect(p.GUI)
+        else:
+            self.client=p.connect(p.DIRECT)
 
         #setup and urdf load
-        self.client=p.connect(p.GUI)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
-        p.setGravity(00,0,-9.81)
+        p.setGravity(0,0,-9.81)
         p.loadURDF("plane.urdf")
         self.robot_id=p.loadURDF(arm_urdf,[0,0,0.01],useFixedBase=True)
 
@@ -92,7 +95,14 @@ class CustomEnv(gym.Env):
         angle=np.random.uniform(0,2*np.pi)
         radius=np.random.uniform(min_radius,max_radius)
 
-        self.goal_pos=np.array([radius*np.cos(angle),radius*np.sin(angle),goal_height], dtype=np.float32)
+        rotating_state = p.getLinkState(self.robot_id, 1)
+        base_pos = np.array(rotating_state[0])
+
+        self.goal_pos=np.array([
+            base_pos[0]+radius*np.cos(angle),
+            base_pos[1]+radius*np.sin(angle),
+            base_pos[2]+goal_height], 
+            dtype=np.float32)
 
         self._update_goal_marker()
         #initilize previous state
@@ -118,7 +128,6 @@ class CustomEnv(gym.Env):
                                     targetPositions=new_targets,
                                     forces=[500.0]*3)
         p.stepSimulation()
-        time.sleep(1.0/240.0)
 
         #Calculate Reward(The closet the distance higher the reward)
         ee_state=p.getLinkState(self.robot_id,self.joints[-1])
@@ -133,21 +142,44 @@ class CustomEnv(gym.Env):
         if terminated:
             reward+=10.0 #success rewared
 
+            for i in self.joints:
+                p.resetJointState(self.robot_id,i,0.0)
+
+            self._spawn_new_goal()
+
+            ee_state = p.getLinkState(self.robot_id, self.joints[-1])
+            ee_pos = np.array(ee_state[0])
+            self.prev_distance = np.linalg.norm(ee_pos - self.goal_pos)
+
+
         #time limit
         self.current_step+=1
         truncated=bool(self.current_step>=self.max_steps) # time limit defined
         # if truncated and not terminated:
         #     reward-=5.0 #time penalty
 
-        self.prev_distance=distance
 
         observation=self._get_obs()
         info={"distance":distance}
+        self.prev_distance=distance
 
         return observation,reward,terminated, truncated, info
+    
+    def _spawn_new_goal(self):
+        angle = np.random.uniform(0, 2 * np.pi)
+        radius = np.random.uniform(0.15, 0.25)
+        rotating_state = p.getLinkState(self.robot_id, 1)
+        base_pos = np.array(rotating_state[0])
+        self.goal_pos = np.array([
+            base_pos[0] + radius * np.cos(angle),
+            base_pos[1] + radius * np.sin(angle),
+            base_pos[2] + 0.03
+        ], dtype=np.float32)
+        self._update_goal_marker()
     
     def render(self):
         pass
 
     def close(self):
-        p.disconnect(self.client)
+        if hasattr(self,'client'):
+            p.disconnect(self.client)

@@ -3,7 +3,7 @@ import pybullet_data
 import time
 import os
 
-urdf="/home/arjan/ros_spaces/gripper_ws/src/robotic_arm/urdf/robotic_arm.urdf"
+urdf="/home/arjan/arm_rl/urdf/robotic_arm/urdf/robotic_arm.urdf"
 if not os.path.exists(urdf):
     print(f"ERROR:Cannot find urdf {urdf}")
 else:

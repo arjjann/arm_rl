@@ -35,7 +35,7 @@ else:
                 batch_size=64,
                 n_steps=2048,
                 max_grad_norm=0.5,
-                device="cpu",
+                device="cuda",
                 tensorboard_log=log_path)
 
 checkpoint_callback=CheckpointCallback(save_freq=5000, save_path="models/",name_prefix="ppo_robotic_arm")
